@@ -4,18 +4,29 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
+import os
 
+# Cache the data loading function
+@st.cache_data
 def load_data():
-    # Load your Excel file
-    df = pd.read_excel('BusEmployeesInfo.xlsx')
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Construct path to data file
+    data_path = os.path.join(script_dir, 'data', 'BusEmployeesInfo.xlsx')
     
-    # Convert StartDate to datetime if not already
-    df['StartDate'] = pd.to_datetime(df['StartDate'])
-    
-    # Calculate tenure
-    df['Tenure'] = (datetime.now() - df['StartDate']).dt.days / 365
-    
-    return df
+    try:
+        df = pd.read_excel(data_path)
+        
+        # Convert StartDate to datetime if not already
+        df['StartDate'] = pd.to_datetime(df['StartDate'])
+        
+        # Calculate tenure
+        df['Tenure'] = (datetime.now() - df['StartDate']).dt.days / 365
+        
+        return df
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
+        return None
 
 def format_large_number(num):
     if num >= 1000000:
@@ -31,11 +42,15 @@ def main():
     # Load data
     df = load_data()
     
+    if df is None:
+        st.error("Unable to load data. Please check if the data file exists in the 'data' folder.")
+        return
+    
     # Sidebar filters
     st.sidebar.header("Filters")
     
     # Job Title filter
-    job_titles = ["All"] + list(df["Job Title"].unique())
+    job_titles = ["All"] + sorted(df["Job Title"].unique().tolist())
     selected_title = st.sidebar.selectbox("Select Job Title", job_titles)
     
     # Apply filters
@@ -72,7 +87,7 @@ def main():
             nbins=20,
             title="Salary Distribution"
         )
-        st.plotly_chart(fig_salary)
+        st.plotly_chart(fig_salary, use_container_width=True)
         
         # Salary by Job Title
         fig_salary_job = px.box(
@@ -82,55 +97,64 @@ def main():
             title="Salary Range by Job Title"
         )
         fig_salary_job.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_salary_job)
+        st.plotly_chart(fig_salary_job, use_container_width=True)
 
     with tab2:
         st.subheader("Team Composition")
         
-        # Job Title distribution
-        job_dist = df_filtered["Job Title"].value_counts()
-        fig_jobs = px.pie(
-            values=job_dist.values,
-            names=job_dist.index,
-            title="Employee Distribution by Job Title"
-        )
-        st.plotly_chart(fig_jobs)
+        col1, col2 = st.columns(2)
         
-        # Geographic distribution
-        zip_dist = df_filtered["Zip"].value_counts()
-        fig_zip = px.bar(
-            x=zip_dist.index,
-            y=zip_dist.values,
-            title="Employee Distribution by ZIP Code"
-        )
-        st.plotly_chart(fig_zip)
+        with col1:
+            # Job Title distribution
+            job_dist = df_filtered["Job Title"].value_counts()
+            fig_jobs = px.pie(
+                values=job_dist.values,
+                names=job_dist.index,
+                title="Employee Distribution by Job Title"
+            )
+            st.plotly_chart(fig_jobs, use_container_width=True)
+        
+        with col2:
+            # Geographic distribution
+            zip_dist = df_filtered["Zip"].value_counts()
+            fig_zip = px.bar(
+                x=zip_dist.index,
+                y=zip_dist.values,
+                title="Employee Distribution by ZIP Code"
+            )
+            st.plotly_chart(fig_zip, use_container_width=True)
 
     with tab3:
         st.subheader("Tenure Analysis")
         
-        # Tenure distribution
-        fig_tenure = px.histogram(
-            df_filtered,
-            x="Tenure",
-            nbins=20,
-            title="Employee Tenure Distribution (Years)"
-        )
-        st.plotly_chart(fig_tenure)
+        col1, col2 = st.columns(2)
         
-        # Hiring timeline
-        fig_timeline = px.scatter(
-            df_filtered,
-            x="StartDate",
-            y="Job Title",
-            title="Employee Start Dates by Job Title"
-        )
-        st.plotly_chart(fig_timeline)
+        with col1:
+            # Tenure distribution
+            fig_tenure = px.histogram(
+                df_filtered,
+                x="Tenure",
+                nbins=20,
+                title="Employee Tenure Distribution (Years)"
+            )
+            st.plotly_chart(fig_tenure, use_container_width=True)
+        
+        with col2:
+            # Hiring timeline
+            fig_timeline = px.scatter(
+                df_filtered,
+                x="StartDate",
+                y="Job Title",
+                title="Employee Start Dates by Job Title"
+            )
+            st.plotly_chart(fig_timeline, use_container_width=True)
 
     # Detailed employee table
     st.subheader("Employee Details")
     st.dataframe(
-        df_filtered[["EMPID", "First Name", "Last Name", "Job Title", "Salary", "StartDate"]],
-        hide_index=True
+        df_filtered[["EMPID", "First Name", "Last Name", "Job Title", "Salary", "StartDate"]].sort_values("Last Name"),
+        hide_index=True,
+        use_container_width=True
     )
 
 if __name__ == "__main__":
