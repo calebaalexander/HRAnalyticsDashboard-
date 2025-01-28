@@ -110,30 +110,58 @@ def main():
     tab1, tab2, tab3 = st.tabs(["Salary Analysis", "Team Composition", "Tenure Insights"])
     
     with tab1:
-        st.subheader("Salary Distribution")
+        st.subheader("Salary Analysis")
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Salary distribution plot
+            # Enhanced Salary distribution plot
             fig_salary = px.histogram(
                 df_filtered,
                 x="Salary",
                 nbins=20,
-                title="Salary Distribution"
+                title="Salary Distribution",
+                color_discrete_sequence=['#3B82F6'],  # Modern blue color
+                labels={"Salary": "Salary ($)", "count": "Number of Employees"}
             )
-            fig_salary.update_layout(showlegend=False)
+            fig_salary.update_layout(
+                showlegend=False,
+                plot_bgcolor='white',
+                bargap=0.1,
+                title_x=0.5,
+                yaxis_title="Number of Employees",
+                xaxis_title="Salary ($)",
+                title_font=dict(size=20),
+            )
+            fig_salary.update_traces(
+                marker_line_color='#1E40AF',
+                marker_line_width=1
+            )
             st.plotly_chart(fig_salary, use_container_width=True)
         
         with col2:
-            # Salary by Job Title
+            # Enhanced Salary range by Job Title
             fig_salary_job = px.box(
                 df_filtered,
                 x="Job Title",
                 y="Salary",
-                title="Salary Range by Job Title"
+                title="Salary Range by Job Title",
+                color_discrete_sequence=['#3B82F6'],
+                labels={"Salary": "Salary ($)"}
             )
-            fig_salary_job.update_xaxes(tickangle=45)
+            fig_salary_job.update_layout(
+                plot_bgcolor='white',
+                title_x=0.5,
+                xaxis_tickangle=45,
+                height=500,
+                title_font=dict(size=20),
+                xaxis_title="",
+                yaxis_title="Salary ($)",
+            )
+            fig_salary_job.update_traces(
+                marker_color='#3B82F6',
+                marker_size=4
+            )
             st.plotly_chart(fig_salary_job, use_container_width=True)
 
     with tab2:
@@ -142,23 +170,54 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Job Title distribution
+            # Enhanced Job Title distribution
             job_dist = df_filtered["Job Title"].value_counts()
             fig_jobs = px.pie(
                 values=job_dist.values,
                 names=job_dist.index,
-                title="Employee Distribution by Job Title"
+                title="Employee Distribution by Job Title",
+                color_discrete_sequence=px.colors.qualitative.Set3,
+                hole=0.4  # Makes it a donut chart
             )
+            fig_jobs.update_layout(
+                title_x=0.5,
+                title_font=dict(size=20),
+                showlegend=True,
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=1.0
+                ),
+                height=500
+            )
+            fig_jobs.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig_jobs, use_container_width=True)
         
         with col2:
-            # Geographic distribution
+            # Enhanced Geographic distribution
             zip_dist = df_filtered["Zip"].value_counts()
             fig_zip = px.bar(
                 x=zip_dist.index,
                 y=zip_dist.values,
                 title="Employee Distribution by ZIP Code",
-                labels={'x': 'ZIP Code', 'y': 'Number of Employees'}
+                color_discrete_sequence=['#3B82F6'],
+                labels={
+                    'x': 'ZIP Code',
+                    'y': 'Number of Employees'
+                }
+            )
+            fig_zip.update_layout(
+                plot_bgcolor='white',
+                title_x=0.5,
+                showlegend=False,
+                title_font=dict(size=20),
+                height=500,
+                bargap=0.2,
+            )
+            fig_zip.update_traces(
+                marker_line_color='#1E40AF',
+                marker_line_width=1
             )
             st.plotly_chart(fig_zip, use_container_width=True)
 
@@ -168,23 +227,55 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Tenure distribution
+            # Enhanced Tenure distribution
             fig_tenure = px.histogram(
                 df_filtered,
                 x="Tenure",
-                nbins=20,
-                title="Employee Tenure Distribution (Years)"
+                nbins=15,
+                title="Employee Tenure Distribution",
+                color_discrete_sequence=['#3B82F6'],
+                labels={
+                    "Tenure": "Years at Company",
+                    "count": "Number of Employees"
+                }
             )
-            fig_tenure.update_layout(showlegend=False)
+            fig_tenure.update_layout(
+                showlegend=False,
+                plot_bgcolor='white',
+                bargap=0.1,
+                title_x=0.5,
+                title_font=dict(size=20),
+                xaxis_title="Years at Company",
+                yaxis_title="Number of Employees",
+                height=500
+            )
+            fig_tenure.update_traces(
+                marker_line_color='#1E40AF',
+                marker_line_width=1
+            )
             st.plotly_chart(fig_tenure, use_container_width=True)
         
         with col2:
-            # Hiring timeline
+            # Enhanced Hiring timeline
             fig_timeline = px.scatter(
                 df_filtered,
                 x="StartDate",
                 y="Job Title",
-                title="Employee Start Dates by Job Title"
+                title="Employee Start Dates by Job Title",
+                color_discrete_sequence=['#3B82F6'],
+                height=500,
+            )
+            fig_timeline.update_layout(
+                plot_bgcolor='white',
+                title_x=0.5,
+                title_font=dict(size=20),
+                showlegend=False,
+                xaxis_title="Start Date",
+                yaxis_title="",
+                height=500
+            )
+            fig_timeline.update_traces(
+                marker=dict(size=10)
             )
             st.plotly_chart(fig_timeline, use_container_width=True)
 
