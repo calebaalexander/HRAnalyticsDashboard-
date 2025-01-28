@@ -6,15 +6,24 @@ from datetime import datetime
 import numpy as np
 import os
 
+# Configure the page
+st.set_page_config(
+    page_title="HR Analytics Dashboard",
+    page_icon="👥",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Cache the data loading function
 @st.cache_data
 def load_data():
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Construct path to data file
-    data_path = os.path.join(script_dir, 'data', 'BusEmployeesInfo.xlsx')
-    
     try:
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construct path to data file
+        data_path = os.path.join(script_dir, 'data', 'BusEmployeesInfo.xlsx')
+        
+        # Read the Excel file
         df = pd.read_excel(data_path)
         
         # Convert StartDate to datetime if not already
@@ -29,6 +38,7 @@ def load_data():
         return None
 
 def format_large_number(num):
+    """Format large numbers with K/M suffix"""
     if num >= 1000000:
         return f"${num/1000000:.1f}M"
     elif num >= 1000:
@@ -37,6 +47,7 @@ def format_large_number(num):
         return f"${num:.0f}"
 
 def main():
+    # Set up the dashboard header
     st.markdown("# **HR Analytics Dashboard**")
     
     # Load data
@@ -47,23 +58,44 @@ def main():
         return
     
     # Sidebar filters
-    st.sidebar.header("Filters")
-    
-    # Job Title filter
-    job_titles = ["All"] + sorted(df["Job Title"].unique().tolist())
-    selected_title = st.sidebar.selectbox("Select Job Title", job_titles)
+    with st.sidebar:
+        st.header("Filters")
+        
+        # Job Title filter
+        job_titles = ["All"] + sorted(df["Job Title"].unique().tolist())
+        selected_title = st.selectbox("Select Job Title", job_titles)
+        
+        # ZIP Code filter
+        zip_codes = ["All"] + sorted(df["Zip"].unique().astype(str).tolist())
+        selected_zip = st.selectbox("Select ZIP Code", zip_codes)
+        
+        # Date range filter
+        date_range = st.date_input(
+            "Select Date Range",
+            value=(df['StartDate'].min(), df['StartDate'].max()),
+            min_value=df['StartDate'].min().date(),
+            max_value=df['StartDate'].max().date()
+        )
     
     # Apply filters
+    mask = pd.Series(True, index=df.index)
+    
     if selected_title != "All":
-        df_filtered = df[df["Job Title"] == selected_title]
-    else:
-        df_filtered = df.copy()
+        mask &= df["Job Title"] == selected_title
+    
+    if selected_zip != "All":
+        mask &= df["Zip"].astype(str) == selected_zip
+    
+    if len(date_range) == 2:
+        mask &= (df['StartDate'].dt.date >= date_range[0]) & (df['StartDate'].dt.date <= date_range[1])
+    
+    df_filtered = df[mask]
     
     # Top metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total Employees", len(df_filtered))
+        st.metric("Total Employees", f"{len(df_filtered):,}")
     with col2:
         avg_salary = df_filtered["Salary"].mean()
         st.metric("Average Salary", format_large_number(avg_salary))
@@ -80,24 +112,29 @@ def main():
     with tab1:
         st.subheader("Salary Distribution")
         
-        # Salary distribution plot
-        fig_salary = px.histogram(
-            df_filtered,
-            x="Salary",
-            nbins=20,
-            title="Salary Distribution"
-        )
-        st.plotly_chart(fig_salary, use_container_width=True)
+        col1, col2 = st.columns(2)
         
-        # Salary by Job Title
-        fig_salary_job = px.box(
-            df_filtered,
-            x="Job Title",
-            y="Salary",
-            title="Salary Range by Job Title"
-        )
-        fig_salary_job.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_salary_job, use_container_width=True)
+        with col1:
+            # Salary distribution plot
+            fig_salary = px.histogram(
+                df_filtered,
+                x="Salary",
+                nbins=20,
+                title="Salary Distribution"
+            )
+            fig_salary.update_layout(showlegend=False)
+            st.plotly_chart(fig_salary, use_container_width=True)
+        
+        with col2:
+            # Salary by Job Title
+            fig_salary_job = px.box(
+                df_filtered,
+                x="Job Title",
+                y="Salary",
+                title="Salary Range by Job Title"
+            )
+            fig_salary_job.update_xaxes(tickangle=45)
+            st.plotly_chart(fig_salary_job, use_container_width=True)
 
     with tab2:
         st.subheader("Team Composition")
@@ -120,7 +157,8 @@ def main():
             fig_zip = px.bar(
                 x=zip_dist.index,
                 y=zip_dist.values,
-                title="Employee Distribution by ZIP Code"
+                title="Employee Distribution by ZIP Code",
+                labels={'x': 'ZIP Code', 'y': 'Number of Employees'}
             )
             st.plotly_chart(fig_zip, use_container_width=True)
 
@@ -137,6 +175,7 @@ def main():
                 nbins=20,
                 title="Employee Tenure Distribution (Years)"
             )
+            fig_tenure.update_layout(showlegend=False)
             st.plotly_chart(fig_tenure, use_container_width=True)
         
         with col2:
@@ -151,17 +190,17 @@ def main():
 
     # Detailed employee table
     st.subheader("Employee Details")
+    
+    # Format the table data
+    display_df = df_filtered[["EMPID", "First Name", "Last Name", "Job Title", "Salary", "StartDate"]].copy()
+    display_df["Salary"] = display_df["Salary"].apply(lambda x: f"${x:,.0f}")
+    display_df["StartDate"] = display_df["StartDate"].dt.strftime('%Y-%m-%d')
+    
     st.dataframe(
-        df_filtered[["EMPID", "First Name", "Last Name", "Job Title", "Salary", "StartDate"]].sort_values("Last Name"),
+        display_df.sort_values("Last Name"),
         hide_index=True,
         use_container_width=True
     )
 
 if __name__ == "__main__":
-    st.set_page_config(
-        page_title="HR Analytics Dashboard",
-        page_icon="👥",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
     main()
